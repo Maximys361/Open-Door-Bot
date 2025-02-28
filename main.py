@@ -18,18 +18,22 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
     
-    await update.message.reply_text("Hello, this is a test version of OpenDoorsBot.", reply_markup= markup)
+    await update.message.reply_text("Вас вітає OpenDoorsBot, це поки що тестова версія!", reply_markup= markup)
+    await update.message.reply_text("Щоб дізнатися покрокову інформацію натисність кнопку \n \U00002753 Довідка")
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("This bot just exist for helping microperson in their life")
-    await update.message.reply_text(f"If u want something to know use  /info")
+    await update.message.reply_text("Цей бот був створений для облегшення життя абітурієнтам.")
+    await update.message.reply_text("А саме облегшена версія пошуку інформації про день відкритих дверей")
+    await update.message.reply_text("Якщо ви хочете дізнатися більше натисність /info")
 
 
 async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Це також допоможе зрозуміти вам наш проєкт")
-    await update.message.reply_text("Ви повинні знати: цей бот створений для пошуку інформації про День Відкритих Дверей")
-    await update.message.reply_text("Це справді корисно для майбутніх студентів")
+    await update.message.reply_text("Тут ви більше зможете дізнатися про наш проєкт.")
+    await update.message.reply_text("В боті ви зможете відслідовувати інформацію про день відкритих дверей в бажаному ЗВО!")
+    await update.message.reply_text("Це насправді дуже корисно для вас, і зараз я розповім, як вам почати це робити!")
+    await update.message.reply_text("Натиcніть кнопку \U0001F50E Пошук, оберіть заклад, який вам цікавий")
+    await update.message.reply_text("Якщо інформація вже відома про захід, ми вам скажемо, якщо ні, то у майбутньому обо'язково вас повідомимо!")
 
 
 
@@ -49,7 +53,8 @@ async def button_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["waiting_for_search"] = True 
 
 async def button_ref(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Ви обрали кнопку довідка")
+    await update.message.reply_text("Ви обрали кнопку \U00002753 Довідка")
+    await help_command(update, context)
     context.user_data["waiting_for_ref"] = True 
 
 
@@ -59,12 +64,14 @@ BUTTON_HANDLERS = {
     "\U00002753 довідка": button_ref,
     "\U0001F4DD зареєструватись": button_register
 }
+
 # Responses
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
-    print(f"Text is : {text}")
+    print(f"Recieved: {text}")
     print(update)
+
     if context.user_data.get("waiting_for_sub"):
         if text == 'так':
             await update.message.reply_text("Ось ваші підписки:")
@@ -77,17 +84,18 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.message.from_user.id
         USER_DATA[user_id] = {"first_name": text}  
         await update.message.reply_text(f"Ваше ім'я збережено: {text.capitalize()}")
+        await update.message.reply_text("Ви успішно зареєструвались")
         context.user_data["waiting_for_reg"] = False 
         return
     
+    if context.user_data.get("waiting_for_ref"):
+        await update.message.reply_text("")
             
     handler = BUTTON_HANDLERS.get(text)
     if handler:
         await handler(update, context)
     else:
         await update.message.reply_text("Я не розумію, що ви написали, будь ласка, оберіть коректний варіант.")
-
-    print(USER_DATA)
     
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -111,6 +119,7 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler('info', info_command))
 
     # Messages
+    app.add_handler(MessageHandler(filters.Regex("^\U00002753 Довідка$"), button_ref))
     app.add_handler(MessageHandler(filters.Regex("^\U0001F4DD  Зареєструватись$"), button_register))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.ALL, debug))
