@@ -1,9 +1,12 @@
 from typing import Final
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, Updater
 
 TOKEN : Final = "7766896429:AAHE9RR9XXXtvvgPVc9qlzZMMI53ihTt_VQ"
 BOT_USERNAME : Final = "@AbitlyOpenDoorsBot"
+
+USER_DATA = {}
+FIRST_NAME = range(1)
 
 
 # Commands
@@ -31,51 +34,65 @@ async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def button_register(update: Update, context: ContextTypes.DEFAULT_TYPE):
-  text = update.message.text
-  if text == "\U0001F4DD Зареєструватись":
-      await update.message.reply_text("Ви обрали кнопку зареєструватись")
-      await update.message.reply_text("Якщо ця опція вас влаштовує, то введіть ваше ім'я та прізвище")
-    
+    await update.message.reply_text("Ви обрали кнопку зареєструватись")
+    await update.message.reply_text("Якщо ця опція вас влаштовує, то введіть ваше ім'я")
+    context.user_data["waiting_for_reg"] = True 
+
 
 async def button_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Ви вибрали опцію мої підписки, бажаєте переглянути їх? Відповідайте 'так' або 'ні'.")
-    context.user_data["waiting_for_confirmation"] = True 
+    context.user_data["waiting_for_sub"] = True 
        
 
 async def button_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Ви обрали кнопку пошуку")
+    context.user_data["waiting_for_search"] = True 
 
-
-async def button_dovidka(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_ref(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Ви обрали кнопку довідка")
+    context.user_data["waiting_for_ref"] = True 
 
 
 BUTTON_HANDLERS = {
     "\U0001F4CC мої підписки": button_sub,
     "\U0001F50E пошук": button_search,
-    "\U00002753 довідка": button_dovidka,
+    "\U00002753 довідка": button_ref,
     "\U0001F4DD зареєструватись": button_register
 }
 # Responses
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().lower()
-    if context.user_data.get("waiting_for_confirmation"):
+    print(f"Text is : {text}")
+    print(update)
+    if context.user_data.get("waiting_for_sub"):
         if text == 'так':
             await update.message.reply_text("Ось ваші підписки:")
         else:
             await update.message.reply_text("Скасовано.")
-        context.user_data["waiting_for_confirmation"] = False  
+        context.user_data["waiting_for_sub"] = False  
         return
     
-        
+    if context.user_data.get("waiting_for_reg"):
+        user_id = update.message.from_user.id
+        USER_DATA[user_id] = {"first_name": text}  
+        await update.message.reply_text(f"Ваше ім'я збережено: {text.capitalize()}")
+        context.user_data["waiting_for_reg"] = False 
+        return
+    
+            
     handler = BUTTON_HANDLERS.get(text)
     if handler:
         await handler(update, context)
     else:
         await update.message.reply_text("Я не розумію, що ви написали, будь ласка, оберіть коректний варіант.")
 
+    print(USER_DATA)
+    
 
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Реєстрацію скасовано.")
+    context.user_data["waiting_for_reg"] = False
     
 
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -87,13 +104,14 @@ async def debug(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     print("Starting bot...")
     app = Application.builder().token(TOKEN).build()
-    
+
     # Commands
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('help', help_command))
     app.add_handler(CommandHandler('info', info_command))
 
     # Messages
+    app.add_handler(MessageHandler(filters.Regex("^\U0001F4DD  Зареєструватись$"), button_register))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.ALL, debug))
     # Errors
